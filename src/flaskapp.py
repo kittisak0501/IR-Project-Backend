@@ -1,38 +1,33 @@
-import string
-import numpy as np
-from flask import Flask, request
-from nltk import PorterStemmer, word_tokenize
+import csv
+
+import pandas as pd
+from flask import Flask, request, jsonify
+from nltk import PorterStemmer
+from nltk.corpus import stopwords
+from scipy.sparse import hstack
 import pickle
-
-
-def preProcess(text, stopword_set, stemmer):
-    cleaned_text = text.translate(str.maketrans('', '', '!"#$%&\'()*+,.<=>?@[]^`{|}~' + u'\xa0'))
-    cleaned_text = cleaned_text.lower()
-    cleaned_text = cleaned_text.translate(str.maketrans(string.whitespace, ' ' * len(string.whitespace), ''))
-
-    tokenized_text = word_tokenize(cleaned_text)
-    sw_removed_text = [word for word in tokenized_text if word not in stopword_set]
-    sw_removed_text = [word for word in sw_removed_text if len(word) > 2]
-    stemmed_text = ' '.join([stemmer.stem(w) for w in sw_removed_text])
-
-    return stemmed_text
-
-
+from flask import Flask, request
+import pandas as pd
+import numpy as np
+import search
+import json
+import time
 app = Flask(__name__)
-app.vecterizer = pickle.load(open('../resource/BM25SearchByName.pkl', 'rb'))
-app.animeInfo = pickle.load(open('../resource/anime.pkl', 'rb'))
 
-
-@app.route('/SerachByName', methods=['GET'])
-def FlaskSearhByName():
-    response_object = {'status': 'success'}
+@app.route('/title', methods=['GET'])
+def SearchByTitle():
     argList = request.args.to_dict(flat=False)
     query_term = argList['query'][0]
-    score = app.vecterizer.transform(query_term)
-    rank = np.argsort(score)[::-1]
-    response_object = app.animeInfo.iloc[rank[:10]].to_json()
-    return response_object
+    result = search.searchByTitle(query_term).T
+    jsonResult = result.to_json()
+    return jsonResult
 
-
+@app.route('/description', methods=['GET'])
+def SearchByDescription():
+    argList = request.args.to_dict(flat=False)
+    query_term = argList['query'][0]
+    result = search.searchByDescription(query_term).T
+    jsonResult = result.to_json()
+    return jsonResult
 if __name__ == '__main__':
     app.run(debug=True)
